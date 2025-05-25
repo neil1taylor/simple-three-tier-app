@@ -41,9 +41,9 @@ db_subnet_cidr = "10.1.4.128/26"
 web_rip_name    = "web-01-rip"
 web_rip_address = "10.1.4.4"
 app_rip_name    = "app-01-rip"
-app_rip_address = "10.1.4.5"
+app_rip_address = "10.1.4.68"
 db_rip_name     = "db-01-rip"
-db_rip_address  = "10.1.4.6"
+db_rip_address  = "10.1.4.132"
 
 # Virtual Network Interfaces
 web_vni_name = "web-01-vni"
