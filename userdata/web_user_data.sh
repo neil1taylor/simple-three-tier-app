@@ -14,7 +14,7 @@ write_files:
     content: |
       #!/bin/bash
       # Clone the repository containing deployment scripts
-      git clone https://github.com/YOUR_USERNAME/vpc-three-tier-app.git /opt/deployment
+      git clone https://github.com/neil1taylor/simple-three-tier-app.git /opt/deployment
       
       # Run the web tier script
       chmod +x /opt/deployment/web-tier.sh
