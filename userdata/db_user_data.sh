@@ -1,4 +1,3 @@
-#### DATABASE TIER USER DATA ####
 #cloud-config
 
 package_update: true

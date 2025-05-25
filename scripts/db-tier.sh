@@ -1,4 +1,3 @@
-#### DATABASE TIER SCRIPT ####
 #!/bin/bash
 
 # db-tier-init.sh - Run on database tier VSI

@@ -1,4 +1,3 @@
-#### APPLICATION TIER (BACKEND) SCRIPT ####
 #!/bin/bash
 
 # app-tier-init.sh - Run on application tier VSI

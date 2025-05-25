@@ -1,4 +1,3 @@
-#### WEB TIER (FRONTEND) SCRIPT ####
 #!/bin/bash
 
 # web-tier-init.sh - Run on frontend VSI
@@ -12,7 +11,7 @@ cat > /var/www/html/index.html << 'EOF'
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Three-Tier Test Application</title>
+    <title>Three-Tier Demo Application</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -44,7 +43,7 @@ cat > /var/www/html/index.html << 'EOF'
     </style>
 </head>
 <body>
-    <h1>IBM Cloud VPC Three-Tier Test Application</h1>
+    <h1>IBM Cloud VPC Three-Tier Demo Application</h1>
     
     <div id="status-container">
         <h2>System Status</h2>
