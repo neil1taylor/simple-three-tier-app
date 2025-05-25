@@ -263,3 +263,50 @@ This is PostgreSQL's host-based authentication configuration file, it:
 - This is necessary for the application tier to connect to the database tier.
 
 **Security Note:** In a production environment, you would typically restrict this to only allow connections from specific IP addresses (like your application tier's IP) rather than permitting connections from anywhere.
+
+## Terraform Scripts
+
+The terraform scripts provisions all the required resources and provisions the Virtual Server instances with cloud-init userdata scripts that will automatically install and configure the appropriate software for each server type when they're provisioned. The Terraform configuration is in the following files:
+
+1. **main.tf** - Contains all the resource definitions, referencing variables in variables.tf
+2. **variables.tf** - Declares all the variables used in the configuration
+3. **terraform.tfvars** - Contains all the parameter values for the variables
+4. **User Data** - This directory contains the e userdata scripts for the VSIs:
+   * web_user_data.yaml: Cloud-init configuration for web tier VSI
+   * app_user_data.yaml: Cloud-init configuration for application tier VSI
+   * db_user_data.yaml: Cloud-init configuration for database tier VSI
+5. **Scripts** - This directory contains the scripts that installs and configures the software in each tier th:
+   * web-tier.sh: The main script for setting up the web tier
+   * app-tier.sh: The main script for setting up the application tier
+   * db-tier.sh: The main script for setting up the database tier
+
+The directory structure is described below:
+
+```
+simple-three-tier-app/
+├── main.tf                 # Main Terraform configuration
+├── variables.tf            # Variable declarations
+├── terraform.tfvars        # Variable values
+└── userdata/
+│   ├── web_user_data.sh    # User data script for web server
+│   ├── app_user_data.sh    # User data script for app server
+│   └── db_user_data.sh     # User data script for database server
+└── scripts/
+    ├── web-tier-init.sh    # Configures the web server
+    ├── app-tier-init.sh    # Configures the app server
+    └── db-tier-init.sh     # Configures the database server
+```
+
+The high level instructions are as follows:
+
+   - Step 1: Create a workspace in IBM Schematics
+   - Step 2: Import the Terraform Files
+   - Step 3: Configure the variables
+   - Step 4: Generate and apply the plan
+   - Step 5: Access Your Resources:
+      - After deploying all three tiers, you'll need to update the configuration with the correct IP addresses:
+         1. SSH into the web tier VSI and run `sudo /opt/deployment/scripts/update-backend-url.sh <app-tier-private-ip>`
+         2. SSH into the application tier VSI and run:
+               * `sudo /opt/deployment/scripts/update-db-url.sh <db-tier-private-ip>`
+               * `sudo systemctl restart app-server`
+  
