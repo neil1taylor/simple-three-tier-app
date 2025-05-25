@@ -300,10 +300,9 @@ simple-three-tier-app/
 The high level instructions are as follows:
 
    - Step 1: Create a workspace in IBM Schematics
-   - Step 2: Import the Terraform Files
-   - Step 3: Configure the variables
-   - Step 4: Generate and apply the plan
-   - Step 5: Access Your Resources:
+   - Step 2: Configure the variables
+   - Step 3: Generate and apply the plan
+   - Step 4: Access Your Resources:
       - After deploying all three tiers, you'll need to update the configuration with the correct IP addresses:
          1. SSH into the web tier VSI and run `sudo /opt/deployment/scripts/update-backend-url.sh <app-tier-private-ip>`
          2. SSH into the application tier VSI and run:
