@@ -65,28 +65,28 @@ cat > /var/www/html/index.html << 'EOF'
     </div>
 
     <script>
-        // Backend URL - update this with your application tier's IP or DNS
-        const backendUrl = 'http://APP_TIER_IP:3000';
+        // Use relative URLs to proxy through the web server
+        const apiBase = '/api';
         
         // Check frontend status
-        document.getElementById('frontend-status').innerHTML = 'Frontend: Active ✅';
+        document.getElementById('frontend-status').innerHTML = 'Frontend: Active';
         document.getElementById('frontend-status').className = 'status success';
         
         // Function to test connections
         async function testConnections() {
-            // Test backend connection
+            // Test backend connection through proxy
             try {
-                const backendResponse = await fetch(`${backendUrl}/health`);
+                const backendResponse = await fetch(`${apiBase}/health`);
                 if (backendResponse.ok) {
-                    document.getElementById('backend-status').innerHTML = 'Backend: Connected ✅';
+                    document.getElementById('backend-status').innerHTML = 'Backend: Connected';
                     document.getElementById('backend-status').className = 'status success';
                     
                     // If backend is accessible, check database connection
-                    const dbResponse = await fetch(`${backendUrl}/db-health`);
+                    const dbResponse = await fetch(`${apiBase}/db-health`);
                     const dbData = await dbResponse.json();
                     
                     if (dbData.status === 'connected') {
-                        document.getElementById('database-status').innerHTML = 'Database: Connected ✅';
+                        document.getElementById('database-status').innerHTML = 'Database: Connected';
                         document.getElementById('database-status').className = 'status success';
                     } else {
                         throw new Error('Database connection failed');
@@ -96,10 +96,10 @@ cat > /var/www/html/index.html << 'EOF'
                 }
             } catch (error) {
                 if (error.message === 'Database connection failed') {
-                    document.getElementById('database-status').innerHTML = 'Database: Disconnected ❌';
+                    document.getElementById('database-status').innerHTML = 'Database: Disconnected';
                     document.getElementById('database-status').className = 'status error';
                 } else {
-                    document.getElementById('backend-status').innerHTML = 'Backend: Disconnected ❌';
+                    document.getElementById('backend-status').innerHTML = 'Backend: Disconnected';
                     document.getElementById('backend-status').className = 'status error';
                     document.getElementById('database-status').innerHTML = 'Database: Not checked';
                     document.getElementById('database-status').className = 'status';
@@ -111,7 +111,7 @@ cat > /var/www/html/index.html << 'EOF'
         // Function to create a test record
         async function createRecord() {
             try {
-                const response = await fetch(`${backendUrl}/records`, {
+                const response = await fetch(`${apiBase}/records`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -133,7 +133,7 @@ cat > /var/www/html/index.html << 'EOF'
         // Function to retrieve records
         async function retrieveRecords() {
             try {
-                const response = await fetch(`${backendUrl}/records`);
+                const response = await fetch(`${apiBase}/records`);
                 const data = await response.json();
                 document.getElementById('results').innerText = JSON.stringify(data, null, 2);
             } catch (error) {
@@ -153,7 +153,7 @@ cat > /var/www/html/index.html << 'EOF'
 </html>
 EOF
 
-# Configure Nginx
+# Configure Nginx with proxy support
 cat > /etc/nginx/sites-available/default << 'EOF'
 server {
     listen 80 default_server;
@@ -161,16 +161,24 @@ server {
     root /var/www/html;
     index index.html;
     server_name _;
+    
+    # Serve static files
     location / {
         try_files $uri $uri/ =404;
+    }
+    
+    # Proxy API calls to the app server
+    location /api/ {
+        proxy_pass http://APP_TIER_IP:3000/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 EOF
 
-# Apply configuration and restart Nginx
-systemctl restart nginx
-
-# Create a script to update the backend URL
+# Update the script to replace APP_TIER_IP in nginx config too
 cat > /usr/local/bin/update-backend-url << 'EOF'
 #!/bin/bash
 BACKEND_IP=$1
@@ -179,7 +187,9 @@ if [ -z "$BACKEND_IP" ]; then
     exit 1
 fi
 sed -i "s/APP_TIER_IP/$BACKEND_IP/g" /var/www/html/index.html
-echo "Backend URL updated to: $BACKEND_IP"
+sed -i "s/APP_TIER_IP/$BACKEND_IP/g" /etc/nginx/sites-available/default
+systemctl restart nginx
+echo "Backend URL updated to: $BACKEND_IP and Nginx restarted"
 EOF
 
 chmod +x /usr/local/bin/update-backend-url

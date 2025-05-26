@@ -13,3 +13,10 @@
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# Ignore state files
+terraform.tfstate
+terraform.tfstate.*
+
+# Ignore hidden files
+.terraform.*

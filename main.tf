@@ -15,18 +15,19 @@ provider "ibm" {
 }
 
 locals {
-  prefix = "team-${var.team_number}"
-  mgmt_subnet_cidr = "10.${var.team_number}.1.0/24"
-  vpc_address_prefix = "10.${var.team_number}.4.0/24"
-  web_subnet_cidr = "10.${var.team_number}.4.0/26"
-  app_subnet_cidr = "10.${var.team_number}.4.64/26"
-  db_subnet_cidr = "10.${var.team_number}.4.128/26"
-  web_rip_address = "10.${var.team_number}.4.4"
-  app_rip_address = "10.${var.team_number}.4.68"
-  db_rip_address  = "10.${var.team_number}.4.132"
+  prefix                = "team-${var.team_number}"
+  mgmt_subnet_cidr      = "10.${var.team_number}.1.0/24"
+  vpc_address_prefix    = "10.${var.team_number}.4.0/24"
+  web_subnet_cidr       = "10.${var.team_number}.4.0/26"
+  app_subnet_cidr       = "10.${var.team_number}.4.64/26"
+  db_subnet_cidr        = "10.${var.team_number}.4.128/26"
+  web_rip_address       = "10.${var.team_number}.4.4"
+  app_rip_address       = "10.${var.team_number}.4.68"
+  db_rip_address        = "10.${var.team_number}.4.132"
   web_subnet_default_gw = "10.${var.team_number}.4.1"
   app_subnet_default_gw = "10.${var.team_number}.4.65"
-  db_subnet_default_gw = "10.${var.team_number}.4.129"
+  db_subnet_default_gw  = "10.${var.team_number}.4.129"
+  dns_zone              = "team${var.team_number}.hol.cloud"
 }
 
 # Create Resource Group
@@ -40,7 +41,9 @@ resource "ibm_is_vpc" "app1_vpc" {
   resource_group              = ibm_resource_group.app1_rg.id
   address_prefix_management   = "manual"
   default_network_acl_name    = "${local.prefix}-default-acl"
-  default_security_group_name = "${local.prefix}-default-rt"
+  default_security_group_name = "${local.prefix}-default-sg"
+  default_routing_table_name  = "${local.prefix}-default-rt"
+  tags                        = ["env:app1"]
 }
 
 # Create the VPC address prefix
@@ -99,11 +102,10 @@ resource "ibm_is_security_group_rule" "lb_sg_inbound_http" {
 
 resource "ibm_is_security_group_rule" "lb_sg_outbound" {
   group     = ibm_is_security_group.app1_lb_sg.id
-  direction = "inbound"
+  direction = "outbound"
   remote    = "0.0.0.0/0"
   local     = "0.0.0.0/0"
 }
-
 
 # Web server security group rules
 resource "ibm_is_security_group_rule" "web_sg_inbound_http" {
@@ -261,6 +263,7 @@ resource "ibm_is_subnet" "app1_db_sn" {
   ipv4_cidr_block = local.db_subnet_cidr
   network_acl     = ibm_is_network_acl.app1_acl.id
   public_gateway  = ibm_is_public_gateway.pgw_02_pgw.id
+  resource_group  = ibm_resource_group.app1_rg.id
 }
 
 # Custom Route Tables
@@ -364,8 +367,9 @@ resource "ibm_is_virtual_network_interface" "web_01_vni" {
   name            = "${local.prefix}-${var.web_vni_name}"
   subnet          = ibm_is_subnet.app1_web_sn.id
   security_groups = [ibm_is_security_group.app1_web_sg.id]
+  resource_group  = ibm_resource_group.app1_rg.id
   primary_ip {
-    reserved_ip = ibm_is_subnet_reserved_ip.web_01_rip.id
+    reserved_ip = ibm_is_subnet_reserved_ip.web_01_rip.reserved_ip
   }
 }
 
@@ -373,8 +377,9 @@ resource "ibm_is_virtual_network_interface" "app_01_vni" {
   name            = "${local.prefix}-${var.app_vni_name}"
   subnet          = ibm_is_subnet.app1_app_sn.id
   security_groups = [ibm_is_security_group.app1_app_sg.id]
+  resource_group  = ibm_resource_group.app1_rg.id
   primary_ip {
-    reserved_ip = ibm_is_subnet_reserved_ip.app_01_rip.id
+    reserved_ip = ibm_is_subnet_reserved_ip.app_01_rip.reserved_ip
   }
 }
 
@@ -382,8 +387,9 @@ resource "ibm_is_virtual_network_interface" "db_01_vni" {
   name            = "${local.prefix}-${var.db_vni_name}"
   subnet          = ibm_is_subnet.app1_db_sn.id
   security_groups = [ibm_is_security_group.app1_db_sg.id]
+  resource_group  = ibm_resource_group.app1_rg.id
   primary_ip {
-    reserved_ip = ibm_is_subnet_reserved_ip.db_01_rip.id
+    reserved_ip = ibm_is_subnet_reserved_ip.db_01_rip.reserved_ip
   }
 }
 
@@ -476,7 +482,7 @@ resource "ibm_is_lb_pool" "app1_lb_pool" {
   health_retries = 5
   health_timeout = 30
   health_type    = "http"
-  proxy_protocol = "v1"
+  proxy_protocol = "disabled"
 }
 
 # Add a pool member to the pool
@@ -490,9 +496,10 @@ resource "ibm_is_lb_pool_member" "app1_lb_pool_member" {
 
 # Add a listener
 resource "ibm_is_lb_listener" "app1_lb_lsnr" {
-  lb       = ibm_is_lb.app1_lb.id
-  port     = "80"
-  protocol = "http"
+  lb           = ibm_is_lb.app1_lb.id
+  port         = "80"
+  protocol     = "http"
+  default_pool = ibm_is_lb_pool.app1_lb_pool.id
 }
 
 # Output information

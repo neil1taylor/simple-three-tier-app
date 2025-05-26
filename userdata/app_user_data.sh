@@ -16,8 +16,8 @@ write_files:
       git clone https://github.com/neil1taylor/simple-three-tier-app.git /opt/deployment
       
       # Run the application tier script
-      chmod +x /opt/deployment/app-tier.sh
-      /opt/deployment/app-tier.sh
+      chmod +x /opt/deployment/scripts/app-tier.sh
+      /opt/deployment/scripts/app-tier.sh
       
       # Log completion
       echo "$(date): Application tier deployment completed" >> /var/log/deployment.log

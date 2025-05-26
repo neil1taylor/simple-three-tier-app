@@ -16,8 +16,8 @@ write_files:
       git clone https://github.com/neil1taylor/simple-three-tier-app.git /opt/deployment
       
       # Run the web tier script
-      chmod +x /opt/deployment/web-tier.sh
-      /opt/deployment/web-tier.sh
+      chmod +x /opt/deployment/scripts/web-tier.sh
+      /opt/deployment/scripts/web-tier.sh
       
       # Log completion
       echo "$(date): Web tier deployment completed" >> /var/log/deployment.log

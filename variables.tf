@@ -75,7 +75,7 @@ variable "app_port" {
 variable "db_port" {
   description = "Port for the database server"
   type        = number
-  default     = 3306
+  default     = 5432
 }
 
 # ACL
