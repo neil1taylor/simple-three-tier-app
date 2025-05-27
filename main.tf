@@ -21,7 +21,8 @@ locals {
   web_subnet_cidr       = "10.${var.team_number}.4.0/26"
   app_subnet_cidr       = "10.${var.team_number}.4.64/26"
   db_subnet_cidr        = "10.${var.team_number}.4.128/26"
-  web_rip_address       = "10.${var.team_number}.4.4"
+  web_rip_address       = "10.${var.team_number}.4.5"
+  vnf_rip_address       = "10.${var.team_number}.4.4"
   app_rip_address       = "10.${var.team_number}.4.68"
   db_rip_address        = "10.${var.team_number}.4.132"
   web_subnet_default_gw = "10.${var.team_number}.4.1"
@@ -83,6 +84,12 @@ resource "ibm_is_security_group" "app1_app_sg" {
 
 resource "ibm_is_security_group" "app1_db_sg" {
   name           = "${local.prefix}-${var.db_sg_name}"
+  vpc            = ibm_is_vpc.app1_vpc.id
+  resource_group = ibm_resource_group.app1_rg.id
+}
+
+resource "ibm_is_security_group" "app1_vnf_sg" {
+  name           = "${local.prefix}-${var.vnf_sg_name}"
   vpc            = ibm_is_vpc.app1_vpc.id
   resource_group = ibm_resource_group.app1_rg.id
 }
@@ -208,6 +215,21 @@ resource "ibm_is_security_group_rule" "db_sg_outbound" {
   local     = "0.0.0.0/0"
 }
 
+# VNF server security group rules
+resource "ibm_is_security_group_rule" "vnf_sg_inbound_db" {
+  group     = ibm_is_security_group.app1_vnf_sg.id
+  direction = "inbound"
+  remote    =  "0.0.0.0/0"
+  local     = local.vpc_address_prefix 
+}
+
+resource "ibm_is_security_group_rule" "vnf_sg_outbound" {
+  group     = ibm_is_security_group.app1_vnf_sg.id
+  direction = "outbound"
+  remote    = "0.0.0.0/0"
+  local     = "0.0.0.0/0"
+}
+
 # Create Network ACL
 resource "ibm_is_network_acl" "app1_acl" {
   name           = "${local.prefix}-${var.acl_name}"
@@ -233,7 +255,7 @@ resource "ibm_is_network_acl" "app1_acl" {
   }
 }
 
-# Create Web Subnet
+# Create Web Subnet with PGW
 resource "ibm_is_subnet" "app1_web_sn" {
   name            = "${local.prefix}-${var.web_subnet_name}"
   vpc             = ibm_is_vpc.app1_vpc.id
@@ -244,25 +266,23 @@ resource "ibm_is_subnet" "app1_web_sn" {
   resource_group  = ibm_resource_group.app1_rg.id
 }
 
-# Create App Subnet
+# Create App Subnet, no PGW
 resource "ibm_is_subnet" "app1_app_sn" {
   name            = "${local.prefix}-${var.app_subnet_name}"
   vpc             = ibm_is_vpc.app1_vpc.id
   zone            = var.zone
   ipv4_cidr_block = local.app_subnet_cidr
   network_acl     = ibm_is_network_acl.app1_acl.id
-  public_gateway  = ibm_is_public_gateway.pgw_02_pgw.id
   resource_group  = ibm_resource_group.app1_rg.id
 }
 
-# Create DB Subnet
+# Create DB Subnet, no PGW
 resource "ibm_is_subnet" "app1_db_sn" {
   name            = "${local.prefix}-${var.db_subnet_name}"
   vpc             = ibm_is_vpc.app1_vpc.id
   zone            = var.zone
   ipv4_cidr_block = local.db_subnet_cidr
   network_acl     = ibm_is_network_acl.app1_acl.id
-  public_gateway  = ibm_is_public_gateway.pgw_02_pgw.id
   resource_group  = ibm_resource_group.app1_rg.id
 }
 
@@ -293,10 +313,21 @@ resource "ibm_is_vpc_routing_table_route" "app_to_db_route" {
   vpc           = ibm_is_vpc.app1_vpc.id
   routing_table = ibm_is_vpc_routing_table.app_route_table.routing_table
   destination   = local.db_subnet_cidr
-  action        = "deliver"
+  action        = "delegate" #"deliver"
   name          = "allow-app-to-db"
   zone          = var.zone
-  next_hop      = local.app_subnet_default_gw  # Gateway IP of app subnet
+  next_hop      = "" #local.app_subnet_default_gw  # Gateway IP of app subnet
+}
+
+# Allow app subnet to communicate with management subnet
+resource "ibm_is_vpc_routing_table_route" "app_to_mgmt_route" {
+  vpc           = ibm_is_vpc.app1_vpc.id
+  routing_table = ibm_is_vpc_routing_table.app_route_table.routing_table
+  destination   = local.mgmt_subnet_cidr
+  action        = "delegate" #"deliver"
+  name          = "allow-app-to-mgmt"
+  zone          = var.zone
+  next_hop      = "" #local.app_subnet_default_gw  # Gateway IP of app subnet
 }
 
 # Allow database subnet to respond to app subnet
@@ -310,15 +341,36 @@ resource "ibm_is_vpc_routing_table_route" "db_to_app_route" {
   next_hop      = local.db_subnet_default_gw   # Gateway IP of db subnet
 }
 
-# Block internet access from database subnet
-resource "ibm_is_vpc_routing_table_route" "db_block_internet" {
+# Allow db subnet to communicate with management subnet
+resource "ibm_is_vpc_routing_table_route" "db_to_mgmt_route" {
+  vpc           = ibm_is_vpc.app1_vpc.id
+  routing_table = ibm_is_vpc_routing_table.db_route_table.routing_table
+  destination   = local.mgmt_subnet_cidr
+  action        = "delegate" #"deliver"
+  name          = "allow-db-to-mgmt"
+  zone          = var.zone
+  next_hop      = "" #local.app_subnet_default_gw  # Gateway IP of app subnet
+}
+
+# Send all other traffic to the VNF
+resource "ibm_is_vpc_routing_table_route" "app_to_vnf" {
+  vpc           = ibm_is_vpc.app1_vpc.id
+  routing_table = ibm_is_vpc_routing_table.app_route_table.routing_table
+  destination   = "0.0.0.0/0"
+  action        = "deliver"
+  name          = "forward-to-vnf"
+  zone          = var.zone
+  next_hop      = ibm_is_subnet_reserved_ip.vnf_01_rip.address
+}
+
+resource "ibm_is_vpc_routing_table_route" "db_to_vnf" {
   vpc           = ibm_is_vpc.app1_vpc.id
   routing_table = ibm_is_vpc_routing_table.db_route_table.routing_table
   destination   = "0.0.0.0/0"
-  action        = "drop"
-  name          = "block-internet-access"
+  action        = "deliver"
+  name          = "forward-to-vnf"
   zone          = var.zone
-  next_hop      = ""
+  next_hop      = ibm_is_subnet_reserved_ip.vnf_01_rip.address
 }
 
 # Allow app subnet to access web subnet
@@ -362,6 +414,12 @@ resource "ibm_is_subnet_reserved_ip" "db_01_rip" {
   address = local.db_rip_address
 }
 
+resource "ibm_is_subnet_reserved_ip" "vnf_01_rip" {
+  subnet  = ibm_is_subnet.app1_web_sn.id
+  name    = "${local.prefix}-${var.vnf_rip_name}"
+  address = local.vnf_rip_address
+}
+
 # Create Virtual Network Interfaces
 resource "ibm_is_virtual_network_interface" "web_01_vni" {
   name            = "${local.prefix}-${var.web_vni_name}"
@@ -393,6 +451,17 @@ resource "ibm_is_virtual_network_interface" "db_01_vni" {
   }
 }
 
+resource "ibm_is_virtual_network_interface" "vnf_01_vni" {
+  name            = "${local.prefix}-${var.vnf_vni_name}"
+  subnet          = ibm_is_subnet.app1_web_sn.id
+  security_groups = [ibm_is_security_group.app1_vnf_sg.id]
+  resource_group  = ibm_resource_group.app1_rg.id
+  primary_ip {
+    reserved_ip = ibm_is_subnet_reserved_ip.vnf_01_rip.reserved_ip
+  }
+  allow_ip_spoofing = true
+}
+
 # Look up the image
 data "ibm_is_image" "ubuntu" {
   name = var.image_name
@@ -422,6 +491,7 @@ resource "ibm_is_instance" "web_01_vsi" {
       id = ibm_is_virtual_network_interface.web_01_vni.id
     }
   }
+  depends_on = [ibm_is_instance.vnf_01_vsi]
 }
 
 resource "ibm_is_instance" "app_01_vsi" {
@@ -442,6 +512,7 @@ resource "ibm_is_instance" "app_01_vsi" {
       id = ibm_is_virtual_network_interface.app_01_vni.id
     }
   }
+  depends_on = [ibm_is_instance.vnf_01_vsi]
 }
 
 resource "ibm_is_instance" "db_01_vsi" {
@@ -460,6 +531,27 @@ resource "ibm_is_instance" "db_01_vsi" {
     name = "db-01-vsi"
     virtual_network_interface { 
       id = ibm_is_virtual_network_interface.db_01_vni.id
+    }
+  }
+  depends_on = [ibm_is_instance.vnf_01_vsi]
+}
+
+resource "ibm_is_instance" "vnf_01_vsi" {
+  name           = "${local.prefix}-${var.vnf_vsi_name}"
+  image          = data.ibm_is_image.ubuntu.id
+  profile        = var.instance_profile
+  vpc            = ibm_is_vpc.app1_vpc.id
+  zone           = var.zone
+  keys           = [data.ibm_is_ssh_key.ssh_key.id]
+  resource_group = ibm_resource_group.app1_rg.id
+  user_data      = file(var.vnf_user_data_file)
+   boot_volume {
+    name = "${local.prefix}-${var.vnf_vsi_name}-boot-vol"
+  }
+  primary_network_attachment {
+    name = "vnf-01-vsi"
+    virtual_network_interface { 
+      id = ibm_is_virtual_network_interface.vnf_01_vni.id
     }
   }
 }
@@ -517,6 +609,10 @@ output "app_server_ip" {
 
 output "db_server_ip" {
   value = ibm_is_subnet_reserved_ip.db_01_rip.address
+}
+
+output "vnf_server_ip" {
+  value = ibm_is_subnet_reserved_ip.vnf_01_rip.address
 }
 
 output "lb_fqdn" {

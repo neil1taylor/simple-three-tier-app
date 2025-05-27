@@ -172,20 +172,27 @@ This file:
 
 This is the Nginx server configuration file for the web tier, it:
 
-- Configures Nginx to serve the frontend application
-- Sets the document root to `/var/www/html` where our index.html resides
-- Listens on port 80 for HTTP requests
-- Configures default routing for the web server
-- The underscore in `server_name _` means this configuration applies to any hostname
+- Configures Nginx to serve the frontend application.
+- Sets the document root to `/var/www/html` where our index.html resides.
+- Listens on port 80 for HTTP requests.
+- Configures default routing for the web server.
+- The underscore in `server_name _` means this configuration applies to any hostname.
+- When a request to http://web-server/api/, it gets forwarded to http://app-server:3000/.
+- The `proxy_set_header` lines preserve information about the original request (client IP, host, etc.).
+- The result is that the browser never directly contacts the app-server, only the web server:
+    - Browser requests http://web-server/api/health.
+    - Nginx forwards it to http://app-server:3000/health.
+    - App server responds to Nginx.
+    - Nginx sends the response back to the browser.
 
 #### /usr/local/bin/update-backend-url
 
 This is a utility script created in the web tier to update the application tier's IP address, it:
 
-- Takes the application tier IP address as an argument
-- Uses `sed` to replace the placeholder `APP_TIER_IP` in the index.html file
-- Provides feedback confirming the update
-- Allows for easy reconfiguration after deployment without editing files manually
+- Takes the application tier IP address as an argument.
+- Uses `sed` to replace the placeholder `APP_TIER_IP` in the index.html and the Nginx default files.
+- Provides feedback confirming the update.
+- Allows for easy reconfiguration after deployment without editing files manually.
 
 ### app-tier-init.sh
 

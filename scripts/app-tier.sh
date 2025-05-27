@@ -108,7 +108,8 @@ if [ -z "$DB_IP" ]; then
     exit 1
 fi
 sed -i "s/DB_TIER_IP/$DB_IP/g" /opt/app/server.js
-echo "Database URL updated to: $DB_IP"
+systemctl restart app-server
+echo "Database URL updated to: $DB_IP and app-server restarted"
 EOF
 
 chmod +x /usr/local/bin/update-db-url

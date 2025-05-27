@@ -65,6 +65,12 @@ variable "db_sg_name" {
   default     = "app1-db-sg"
 }
 
+variable "vnf_sg_name" {
+  description = "Name of the VNF security group"
+  type        = string
+  default     = "app1-vnf-sg"
+}
+
 # Port configurations
 variable "app_port" {
   description = "Port for the application server"
@@ -123,6 +129,12 @@ variable "db_rip_name" {
   default     = "db-01-rip"
 }
 
+variable "vnf_rip_name" {
+  description = "Name of the VNF server reserved IP"
+  type        = string
+  default     = "vnf-01-rip"
+}
+
 # Virtual Network Interfaces
 variable "web_vni_name" {
   description = "Name of the web server network interface"
@@ -140,6 +152,12 @@ variable "db_vni_name" {
   description = "Name of the database server network interface"
   type        = string
   default     = "db-01-vni"
+}
+
+variable "vnf_vni_name" {
+  description = "Name of the VNF server network interface"
+  type        = string
+  default     = "vnf-01-vni"
 }
 
 # Image and Instance configuration
@@ -180,6 +198,12 @@ variable "db_user_data_file" {
   default     = "userdata/db_user_data.sh"
 }
 
+variable "vnf_user_data_file" {
+  description = "Path to the user data script for the VNF server"
+  type        = string
+  default     = "userdata/vnf_user_data.sh"
+}
+
 # VSI names
 variable "web_vsi_name" {
   description = "Name of the web server virtual server instance"
@@ -197,4 +221,10 @@ variable "db_vsi_name" {
   description = "Name of the database server virtual server instance"
   type        = string
   default     = "db-01-vsi"
+}
+
+variable "vnf_vsi_name" {
+  description = "Name of the VNF server virtual server instance"
+  type        = string
+  default     = "vnf-01-vsi"
 }
