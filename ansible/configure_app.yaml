@@ -1,0 +1,13 @@
+---
+- name: Run update-db-url script on App VSI via bastion
+  gather_facts: false
+  vars:
+    APP_IP: "{{ DB_IP | default('10.1.1.132') }}"
+  tasks:    
+    - name: Execute script
+      shell: /usr/local/bin/update-db-url "{{ DB_IP }}"
+      register: script_output
+
+    - name: Display script output
+      debug:
+        var: script_output.stdout_lines

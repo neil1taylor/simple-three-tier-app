@@ -30,6 +30,7 @@ runcmd:
   - iptables -t nat -A POSTROUTING -o ens3 -j MASQUERADE
 
   # Persist iptables rules (install iptables-persistent if needed)
+  - mkdir -p /etc/iptables
   - iptables-save > /etc/iptables/rules.v4
 
 final_message: "IBM VPC VNF setup complete. IP forwarding enabled."

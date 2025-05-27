@@ -148,6 +148,17 @@ resource "ibm_is_security_group_rule" "web_sg_inbound_ssh" {
   }
 }
 
+resource "ibm_is_security_group_rule" "web_sg_inbound_ssh_vnf" {
+  group     = ibm_is_security_group.app1_web_sg.id
+  direction = "inbound"
+  remote    = local.vnf_rip_address
+  local     = local.web_subnet_cidr
+  tcp {
+    port_min = 22
+    port_max = 22
+  }
+}
+
 resource "ibm_is_security_group_rule" "web_sg_outbound" {
   group     = ibm_is_security_group.app1_web_sg.id
   direction = "outbound"
@@ -171,6 +182,17 @@ resource "ibm_is_security_group_rule" "app_sg_inbound_ssh" {
   group     = ibm_is_security_group.app1_app_sg.id
   direction = "inbound"
   remote    = local.mgmt_subnet_cidr
+  local     = local.app_subnet_cidr
+  tcp {
+    port_min = 22
+    port_max = 22
+  }
+}
+
+resource "ibm_is_security_group_rule" "app_sg_inbound_ssh_vnf" {
+  group     = ibm_is_security_group.app1_app_sg.id
+  direction = "inbound"
+  remote    = local.vnf_rip_address
   local     = local.app_subnet_cidr
   tcp {
     port_min = 22
@@ -208,6 +230,17 @@ resource "ibm_is_security_group_rule" "db_sg_inbound_ssh" {
   }
 }
 
+resource "ibm_is_security_group_rule" "db_sg_inbound_ssh_vnf" {
+  group     = ibm_is_security_group.app1_db_sg.id
+  direction = "inbound"
+  remote    = local.vnf_rip_address
+  local     = local.db_subnet_cidr
+  tcp {
+    port_min = 22
+    port_max = 22
+  }
+}
+
 resource "ibm_is_security_group_rule" "db_sg_outbound" {
   group     = ibm_is_security_group.app1_db_sg.id
   direction = "outbound"
@@ -216,11 +249,22 @@ resource "ibm_is_security_group_rule" "db_sg_outbound" {
 }
 
 # VNF server security group rules
+resource "ibm_is_security_group_rule" "vnf_sg_inbound_ssh" {
+  group     = ibm_is_security_group.app1_vnf_sg.id
+  direction = "inbound"
+  remote    = "0.0.0.0/0"
+  local     = local.vnf_rip_address
+  tcp {
+    port_min = 22
+    port_max = 22
+  }
+}
+
 resource "ibm_is_security_group_rule" "vnf_sg_inbound_db" {
   group     = ibm_is_security_group.app1_vnf_sg.id
   direction = "inbound"
-  remote    =  "0.0.0.0/0"
-  local     = local.vpc_address_prefix 
+  remote    = local.vpc_address_prefix
+  local     = "0.0.0.0/0"
 }
 
 resource "ibm_is_security_group_rule" "vnf_sg_outbound" {
@@ -335,10 +379,10 @@ resource "ibm_is_vpc_routing_table_route" "db_to_app_route" {
   vpc           = ibm_is_vpc.app1_vpc.id
   routing_table = ibm_is_vpc_routing_table.db_route_table.routing_table
   destination   = local.app_subnet_cidr
-  action        = "deliver"
+  action        = "delegate" #"deliver"
   name          = "allow-db-to-app"
   zone          = var.zone
-  next_hop      = local.db_subnet_default_gw   # Gateway IP of db subnet
+  next_hop      = "" #local.db_subnet_default_gw   # Gateway IP of db subnet
 }
 
 # Allow db subnet to communicate with management subnet
@@ -378,10 +422,10 @@ resource "ibm_is_vpc_routing_table_route" "app_to_web_route" {
   vpc           = ibm_is_vpc.app1_vpc.id
   routing_table = ibm_is_vpc_routing_table.app_route_table.routing_table
   destination   = local.web_subnet_cidr
-  action        = "deliver"
+  action        = "delegate" #"deliver"
   name          = "allow-app-to-web"
   zone          = var.zone
-  next_hop      = local.app_subnet_default_gw  # Gateway IP of app subnet
+  next_hop      = "" #local.app_subnet_default_gw  # Gateway IP of app subnet
 }
 
 # Route table associations

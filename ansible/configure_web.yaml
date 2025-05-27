@@ -1,0 +1,13 @@
+---
+- name: Run update-backend-url script on Web VSI via bastion
+  gather_facts: false
+  vars:
+    APP_IP: "{{ APP_IP | default('10.1.1.68') }}"
+  tasks:    
+    - name: Execute script
+      shell: /usr/local/bin/update-backend-url "{{ APP_IP }}"
+      register: script_output
+
+    - name: Display script output
+      debug:
+        var: script_output.stdout_lines
