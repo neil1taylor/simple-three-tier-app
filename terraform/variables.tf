@@ -164,7 +164,7 @@ variable "vnf_vni_name" {
 variable "image_name" {
   description = "Name of the OS image to use for instances"
   type        = string
-  default     = "ibm-ubuntu-20-04-minimal-amd64-2"
+  default     = "ibm-ubuntu-24-04-4-minimal-amd64-2"
 }
 
 variable "ssh_key_name" {
